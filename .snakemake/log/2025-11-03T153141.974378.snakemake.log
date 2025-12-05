@@ -1,0 +1,65 @@
+Building DAG of jobs...
+Using shell: /usr/bin/bash
+Provided cores: 8
+Rules claiming more threads will be scaled down.
+Job stats:
+job                     count    min threads    max threads
+--------------------  -------  -------------  -------------
+all                         1              1              1
+calculate_AUC_pvalue        1              1              1
+compute_score               1              1              1
+generate_norm_score         1              1              1
+total                       4              1              1
+
+Select jobs to execute...
+
+[Mon Nov  3 15:31:50 2025]
+rule compute_score:
+    input: data/magma_result.txt, data/singlecell/data.h5ad
+    output: result/scRPS_res/tmp/compute_score.log, result/scRPS_res/tmp/list
+    jobid: 1
+    reason: Missing output files: result/scRPS_res/tmp/list, result/scRPS_res/tmp/compute_score.log
+    resources: tmpdir=/tmp
+
+[Mon Nov  3 19:28:56 2025]
+Finished job 1.
+1 of 4 steps (25%) done
+Select jobs to execute...
+
+[Mon Nov  3 19:28:56 2025]
+rule generate_norm_score:
+    input: result/scRPS_res/tmp/list
+    output: result/scRPS_res/norm_score.tsv
+    jobid: 2
+    reason: Missing output files: result/scRPS_res/norm_score.tsv; Input files updated by another job: result/scRPS_res/tmp/list
+    resources: tmpdir=/tmp
+
+[Mon Nov  3 19:29:10 2025]
+Finished job 2.
+2 of 4 steps (50%) done
+Select jobs to execute...
+
+[Mon Nov  3 19:29:10 2025]
+rule calculate_AUC_pvalue:
+    input: result/scRPS_res/norm_score.tsv, data/singlecell/cell_annotation.tsv
+    output: result/scRPS_res/pvalue_AUC.txt, result/scRPS_res/BPS_AUC.txt
+    jobid: 3
+    reason: Missing output files: result/scRPS_res/pvalue_AUC.txt, result/scRPS_res/BPS_AUC.txt; Input files updated by another job: result/scRPS_res/norm_score.tsv
+    resources: tmpdir=/tmp
+
+[Mon Nov  3 19:36:58 2025]
+Finished job 3.
+3 of 4 steps (75%) done
+Select jobs to execute...
+
+[Mon Nov  3 19:36:58 2025]
+localrule all:
+    input: result/scRPS_res/tmp/compute_score.log, result/scRPS_res/tmp/list, result/scRPS_res/norm_score.tsv, result/scRPS_res/pvalue_AUC.txt, result/scRPS_res/BPS_AUC.txt
+    jobid: 0
+    reason: Input files updated by another job: result/scRPS_res/tmp/compute_score.log, result/scRPS_res/BPS_AUC.txt, result/scRPS_res/pvalue_AUC.txt, result/scRPS_res/tmp/list, result/scRPS_res/norm_score.tsv
+    resources: tmpdir=/tmp
+
+[Mon Nov  3 19:36:58 2025]
+Finished job 0.
+4 of 4 steps (100%) done
+Complete log: .snakemake/log/2025-11-03T153141.974378.snakemake.log
