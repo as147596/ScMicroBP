@@ -1,9 +1,0 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
-*.h5ad
-*.h5Seurat
-*.rds
-*.tsv.gz
-*.mtx.gz
