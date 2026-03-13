@@ -14,7 +14,7 @@ otu<-read.table("data/GGMP7009/otu.tsv",row.names = 1,header = T,sep = "\t",comm
 taxa<-otu[,ncol(otu),drop=F]
 meta<-read.csv("data/GGMP7009/meta.csv")
 meta<-meta[!is.na(meta$DBP)&!is.na(meta$SBP),]
-meta$group<-ifelse(meta$DBP<90&meta$SBP<130,"healthy","hypertension")
+meta$group<-ifelse(meta$DBP<90&meta$SBP<140,"healthy","hypertension")
 meta<-meta[which(meta$Antibiotics=="n"&meta$Medication=="n"),]
 otu<-otu[,meta$SampleID]
 taxa_tab<-sapply(taxa$taxonomy, function(x){
@@ -33,13 +33,13 @@ mpse <- mp_import_dada2(seqtab=t(otu), taxatab=taxa_tab, sampleda=meta)
 mpse %<>% mp_rrarefy()
 mpse %<>% 
   mp_cal_alpha(.abundance=RareAbundance)
-mpse %>% 
+alpha1<-mpse %>% 
   mp_plot_alpha(
     .group=group, 
     .alpha=c(Observe, Chao1, ACE, Shannon, Simpson, Pielou)
   ) +
-  scale_fill_manual(values=c("#00A087FF", "#3C5488FF"), guide="none") +
-  scale_color_manual(values=c("#00A087FF", "#3C5488FF"), guide="none")
+  scale_fill_manual(values=c("#9FC3E2","#F9D5B2"), guide="none") +
+  scale_color_manual(values=c("#9FC3E2","#F9D5B2"), guide="none")
 ggsave("result/dif_species/alpha.pdf",width = 6,height = 4)
 
 mpse %<>%
@@ -60,7 +60,7 @@ mpse %<>%
 mpse %<>%
   mp_adonis(.abundance=hellinger, .formula=~group, distmethod="bray", permutations=9999, action="add")
 mpse %>% mp_extract_internal_attr(name=adonis)
-mpse %>% 
+pcoa1<-mpse %>% 
   mp_plot_ord(
     .ord = pcoa, 
     .group = group, 
@@ -71,11 +71,11 @@ mpse %>%
     show.legend = FALSE # don't display the legend of stat_ellipse 
   ) +
   scale_fill_manual(
-    values = c("#00A087FF", "#3C5488FF"), 
-    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=6.5))
+    values = c("#9FC3E2","#F9D5B2"), 
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=10))
   ) +
   scale_color_manual(
-    values=c("#00A087FF", "#3C5488FF"),
+    values=c("#9FC3E2","#F9D5B2"),
     guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=6.5))
   ) +
   scale_size_continuous(
@@ -111,7 +111,7 @@ dif_genus_df<-mm_lefse@marker_table|>as.data.frame()|>as.matrix()
 
 write.csv(dif_genus_df,"result/dif_species/dif_genus.csv")
 
-dif_genus_pro<-read.csv("result/dif_species/dif_genus.csv",row.names = 1)
+dif_genus_pro<-read.csv("result/dif_species/dif_genus1.csv",row.names = 1)
 #dif_genus_test_df<-read.csv("data/test_dif_genus/genus_dif.csv")
 dif_genus_pro$feature<-gsub("g__|_f__.*|_o__.*","",dif_genus_pro$feature)
 dif_genus_p1<-draw_lefse(dif_genus_pro)
@@ -146,6 +146,50 @@ batch_rm<-adjust_batch(as.data.frame(tmp),
                        batch="study_name",
                        data=hypertension_meta)$feature_abd_adj
 phy@otu_table<-otu_table(batch_rm,taxa_are_rows = T)
+mpse<-as.mpse(phy)
+mpse@assays@data@listData[["Abundance"]]<-round(mpse@assays@data@listData[["Abundance"]]*1e6)
+mpse %<>% 
+  mp_cal_alpha(.abundance=RareAbundance)
+alpha2<-mpse %>% 
+  mp_plot_alpha(
+    .group=disease, 
+    .alpha=c(Observe, Chao1, ACE, Shannon, Simpson, Pielou)
+  ) +
+  scale_fill_manual(values=c("#9FC3E2","#F9D5B2"), guide="none") +
+  scale_color_manual(values=c("#9FC3E2","#F9D5B2"), guide="none")
+mpse %<>% 
+  mp_decostand(.abundance=Abundance)
+mpse %<>% mp_cal_dist(.abundance=hellinger, distmethod="bray")
+mpse %<>% 
+  mp_cal_pcoa(.abundance=hellinger, distmethod="bray")
+mpse %<>%
+  mp_adonis(.abundance=hellinger, .formula=~disease, distmethod="bray", permutations=9999, action="add")
+adonis<-mpse %>% mp_extract_internal_attr(name=adonis)
+adonis <-paste0("adonis R2: ",round(adonis$R2,2),"; P-value: ", adonis$`Pr(>F)`)
+pcoa2<-mpse %>% 
+  mp_plot_ord(
+    .ord = pcoa, 
+    .group = disease, 
+    .color = disease, 
+    .size = Observe, 
+    .alpha = Shannon,
+    ellipse = TRUE,
+    show.legend = FALSE # don't display the legend of stat_ellipse 
+  ) +
+  scale_fill_manual(
+    values = c("#9FC3E2","#F9D5B2"), 
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=10))
+  ) +
+  scale_color_manual(
+    values=c("#9FC3E2","#F9D5B2"),
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=6.5))
+  ) +
+  scale_size_continuous(
+    range=c(0.5, 3),
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=6.5))
+  )+labs(subtitle = adonis)
+
+
 mm_lefse <- run_lefse(
   phy,taxa_rank="Genus",
   wilcoxon_cutoff = 0.05,
@@ -184,6 +228,49 @@ taxa[taxa=="unclassified"]<-NA
 test_mpse<-mp_import_dada2(seqtab = otu,taxatab = taxa,sampleda = meta_16s)
 
 phy<-as.phyloseq(test_mpse)
+mpse<-as.mpse(phy)
+mpse %<>% 
+  mp_cal_alpha(.abundance=RareAbundance)
+alpha3<-mpse %>% 
+  mp_plot_alpha(
+    .group=group, 
+    .alpha=c(Observe, Chao1, ACE, Shannon, Simpson, Pielou)
+  ) +
+  scale_fill_manual(values=c("#9FC3E2","#F9D5B2"), guide="none") +
+  scale_color_manual(values=c("#9FC3E2","#F9D5B2"), guide="none")
+mpse %<>% 
+  mp_decostand(.abundance=Abundance)
+mpse %<>% mp_cal_dist(.abundance=hellinger, distmethod="bray")
+mpse %<>% 
+  mp_cal_pcoa(.abundance=hellinger, distmethod="bray")
+mpse %<>%
+  mp_adonis(.abundance=hellinger, .formula=~group, distmethod="bray", permutations=9999, action="add")
+adonis<-mpse %>% mp_extract_internal_attr(name=adonis)
+adonis <-paste0("adonis R2: ",round(adonis$R2,2),"; P-value: ", adonis$`Pr(>F)`)
+pcoa3<-mpse %>% 
+  mp_plot_ord(
+    .ord = pcoa, 
+    .group = group, 
+    .color = group, 
+    .size = Observe, 
+    .alpha = Shannon,
+    ellipse = TRUE,
+    show.legend = FALSE # don't display the legend of stat_ellipse 
+  ) +
+  scale_fill_manual(
+    values = c("#9FC3E2","#F9D5B2"), 
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=10))
+  ) +
+  scale_color_manual(
+    values=c("#9FC3E2","#F9D5B2"),
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=6.5))
+  ) +
+  scale_size_continuous(
+    range=c(0.5, 3),
+    guide = guide_legend(keywidth=0.6, keyheight=0.6, label.theme=element_text(size=6.5))
+  )+labs(subtitle = adonis)
+
+
 mm_lefse <- run_lefse(
   phy,
   wilcoxon_cutoff = 0.05,
@@ -252,16 +339,17 @@ pe1<-upset(fromList(vendown), nsets =4, sets =names(vendown),
       order.by =c("degree"), 
       decreasing = F,
       
-      main.bar.color = c(rep("#000000",4) ,"#d56763","#fcd2a1","#477b80","#2aa080","#a760ae") , #上方y轴柱状图颜色
+      main.bar.color = c(rep("#000000",4) ,"#d56763","#fcd2a1","#477b80","#2aa080","#a760ae","#3fa0ae") , #上方y轴柱状图颜色
       matrix.color = "#000000",             # 矩阵点颜色  
       sets.bar.color = "#4e40ae",           # 集合柱状图颜色
       point.size = 5,
       queries = list(
         list(query = intersects, params = list(names(vendown[c(2,4)])),  color = "#d56763", active = TRUE),
         list(query = intersects, params = list(names(vendown[c(2,3)])),  color = "#fcd2a1",  active = TRUE),
-        list(query = intersects, params = list(names(vendown[c(1,3)])),  color = "#477b80",  active = TRUE),
-        list(query = intersects, params = list(names(vendown[c(1,2)])),  color = "#2aa080",  active = TRUE),
-        list(query = intersects, params = list(names(vendown[c(1:3)])),  color = "#a760ae",  active = TRUE) 
+        list(query = intersects, params = list(names(vendown[c(1,4)])),  color = "#477b80",  active = TRUE),
+        list(query = intersects, params = list(names(vendown[c(1,3)])),  color = "#2aa080",  active = TRUE),
+        list(query = intersects, params = list(names(vendown[c(1,2)])),  color = "#a760ae",  active = TRUE),
+        list(query = intersects, params = list(names(vendown[c(1:3)])),  color = "#3fa0ae",  active = TRUE)
       ),
       
       # text.scale参数说明：
@@ -281,20 +369,41 @@ pe1<-upset(fromList(vendown), nsets =4, sets =names(vendown),
       )
 
 pa<-dif_genus_p1[[2]]+ggtitle("A")+
-  theme(legend.position = "none")+labs(x="")
+  theme(legend.position = "none",
+        plot.margin = margin(b=-10,l=15,r=1))+labs(x="")
 pb<-dif_genus_p2[[2]]+ggtitle("B")+
   theme(legend.position = "bottom")
 pc<-dif_genus_p3[[2]]+ggtitle("C")+
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        plot.margin = margin(t=-20,l=15,r=1))
 
 tmp1<-grid.arrange(grid.arrange(pa,pc,nrow=2,heights=c(0.55,0.45)),pb,nrow=1)
 
 pd<-grid.grabExpr(print(pd1))
 pe<-grid.grabExpr(print(pe1))
 tmp2<-cowplot::plot_grid(pd, pe, ncol = 1, labels = c("D", "E"), label_size = 18)
+pf<-readRDS("result/dif_species/co_network.rds")
+pf[["layers"]][[1]][["aes_params"]]$edge_alpha=0.2
+pf[["layers"]][[1]][["aes_params"]]$edge_width<-0.001
+pf<-pf+ggtitle("F")
+pg<-readRDS("result/dif_species/degree_top20.rds")
+pg<-pg+ggtitle("G")+
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank(),
+        legend.title = element_text(size = 16,face = "bold"),
+        legend.text = element_text(size = 14),
+        axis.title = element_text(size=14,face = "bold"),
+        axis.text = element_text(size=10),
+        plot.margin = margin(t=5,b=5,l=10,r=10),
+        legend.position = "bottom",
+        plot.title = element_text(hjust = -0.065,vjust = 0.5),
+        title = element_text(size = 16,face="bold"))
+tmp3<-grid.arrange(pf,pg,ncol=2,widths=c(6,4))
+tmp12<-grid.arrange(tmp1,tmp2,nrow=1,widths=c(6,3.5))
 dev.off()
-pdf("result/dif_species/dif_genus_all(Fig1).pdf",width = 14,height = 10)
-grid.arrange(tmp1,tmp2,nrow=1,widths=c(6,3.5))
+
+pdf("result/dif_species/dif_genus_all(Fig1).pdf",width = 14,height = 16)
+grid.arrange(tmp12,tmp3,nrow=2,heights=c(6,5))
 dev.off()
 
 combs<-combn(names(vendown),2)

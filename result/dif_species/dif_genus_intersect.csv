@@ -1,11 +1,15 @@
 genus,enrich_group
 Enterobacter,hypertension
 Prevotella,hypertension
-Bacteroides,healthy
 Akkermansia,healthy
 Bifidobacterium,healthy
+Lachnospira,healthy
+Acidaminococcus,healthy
 Butyricimonas,healthy
+Bacteroides,healthy
 Oscillospira,healthy
 Alistipes,healthy
+Bilophila,healthy
 Methanobrevibacter,healthy
+Roseburia,healthy
 Desulfovibrio,healthy

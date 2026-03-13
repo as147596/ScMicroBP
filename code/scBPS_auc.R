@@ -1,7 +1,7 @@
 args <- commandArgs(trailingOnly = TRUE)
 infile <- args[1]
 anno <- args[2]
-outfile <- "result/scRPS_res/pvalue_AUC.txt" 
+outfile <- "result/scBPS_res/pvalue_AUC.txt" 
 outfile_AUC <- args[4] 
 outfile_abs <- normalizePath(outfile)
 rand_dir <- file.path(dirname(outfile_abs), "tmp/")
@@ -14,20 +14,29 @@ if (!dir.exists(rand_dir)) {
 }
 
 # Load necessary libraries
-library(scBPS)
+source("scBPS/rpackage/R/BuildRankings.R")
+source("scBPS/rpackage/R/calc.AUC.R")
+source("scBPS/rpackage/R/calcAUC_fun.R")
+source("scBPS/rpackage/R/p_AUC.R")
+source("scBPS/rpackage/R/perm_AUC.R")
 library(DelayedArray)
 library(data.table)
 library(reshape2)
+pbmc<-readRDS("data/singlecell/pbmc_cellannoed.rds")
 myanno <- fread(file="data/singlecell/cell_annotation.tsv", header=TRUE, stringsAsFactors=FALSE)
 ids <- as.character(unique(myanno$cell_annotation))
 ids <- ids[which(ids != "other")]
+myanno<-data.frame(cell_id=colnames(pbmc),
+                   cell_annotation=pbmc$celltype)
 
 # Read norm_score file from the first command-line argument
-score <- data.table::fread(file="result/scRPS_res/norm_score.tsv", header = TRUE, stringsAsFactors = FALSE)
+score <- data.table::fread(file="result/scBPS_res/norm_score.tsv", header = TRUE, stringsAsFactors = FALSE)
 score <- data.frame(score)
 rownames(score) <- score$cell_id
 score$cell_id <- NULL
-
+score<-score[myanno$cell_id,]
+ids <- as.character(unique(myanno$cell_annotation))
+ids <- ids[which(ids != "other")]
 # Generate rank score
 rankscore <- buildRankings(as.matrix(score))
 
@@ -45,4 +54,4 @@ Sys.time()-time1
 # Calculate p-values and save to the output file
 p_df <- pvalue_AUC(df, rand_dir)
 fwrite(p_df, file=outfile, sep="\t", row.names=TRUE, col.names=TRUE)
-fwrite(df, file="BPS_AUC.txt", sep="\t", row.names=TRUE, col.names=TRUE)
+fwrite(df, file="result/scBPS_res/BPS_AUC.txt", sep="\t", row.names=TRUE, col.names=TRUE)
